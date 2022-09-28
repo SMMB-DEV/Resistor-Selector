@@ -5,6 +5,7 @@ A simple, single source file program to calculate two standard resistor values f
 
 #### Features include:
  - Finding resistor values in the desired [E series](https://en.wikipedia.org/wiki/E_series_of_preferred_numbers)
- - Calculating the error for Vcc or Vout
+ - Calculating the error for V<sub>CC</sub> or V<sub>Out</sub>
  - Option to only find values that result in positive/negative voltage error
- - Option to specify min/max total resistance (R1 + R2)
+ - Option to specify min/max total resistance (R<sub>1</sub> + R<sub>2</sub>)
+ 
