@@ -1,5 +1,5 @@
 # Resistor Selector
-A simple program to calculate two standard resistor values for a voltage divider, written completely in C++14.
+A simple, single source file program to calculate two standard resistor values for a voltage divider, written completely in C++14.
 
 #### Features include:
  - Finding resistor values in the desired [E series](https://en.wikipedia.org/wiki/E_series_of_preferred_numbers)
