@@ -194,7 +194,7 @@ namespace R
 				throw std::out_of_range("");
 
 
-			//make 100 < R < 1000
+			//make 100 <= R < 1000
 			int8_t correction = 0;
 
 			while (R < first())
@@ -203,7 +203,7 @@ namespace R
 				correction--;
 			}
 
-			while (R > first() * 10)
+			while (R >= first() * 10)
 			{
 				R /= 10;
 				correction++;
