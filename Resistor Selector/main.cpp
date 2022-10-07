@@ -103,7 +103,7 @@ void GetInput(const char* msg, const std::function< bool(std::string&) >&& input
 }
 
 template<typename T>
-void Get(const char* const msg, T& t, const T min = std::numeric_limits<T>::min(), const T max = std::numeric_limits<T>::max(), bool optional = false)
+void GetNumber(const char* const msg, T& t, const T min = std::numeric_limits<T>::min(), const T max = std::numeric_limits<T>::max(), bool optional = false)
 {
 	static_assert(std::is_arithmetic_v<T> && sizeof(T) >= 2, "T can only be an integer or floating point type!");
 
@@ -485,9 +485,9 @@ int main()
 
 	//Vcc and Vout
 	double vcc, vout;
-	Get<double>("Enter Vcc (positive): ", vcc, DBL_EPSILON);
+	GetNumber<double>("Enter Vcc (positive): ", vcc, DBL_EPSILON);
 
-	Get<double>("Enter Vout (smaller than Vcc): ", vout, DBL_EPSILON, vcc);
+	GetNumber<double>("Enter Vout (smaller than Vcc): ", vout, DBL_EPSILON, vcc);
 	
 
 
@@ -547,8 +547,8 @@ int main()
 
 	//Minimum
 	uint32_t minimum = 1, maximum = UINT32_MAX;
-	Get<uint32_t>("Enter minimum total resistance (1(default)-1,000,000,000) - Optional: ", minimum, 1, 1'000'000'000, true);
-	Get<uint32_t>("Enter maximum total resistance (min-1,000,000,000) - Optional: ", maximum, minimum, 1'000'000'000, true);
+	GetNumber<uint32_t>("Enter minimum total resistance (1(default)-1,000,000,000) - Optional: ", minimum, 1, 1'000'000'000, true);
+	GetNumber<uint32_t>("Enter maximum total resistance (min-1,000,000,000) - Optional: ", maximum, minimum, 1'000'000'000, true);
 
 
 
