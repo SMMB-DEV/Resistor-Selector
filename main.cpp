@@ -137,6 +137,17 @@ void GetNumber(const char* const msg, T& t, const T min = std::numeric_limits<T>
 
 
 
+namespace Inputs
+{
+	// YES, I'M USING GLOBAL VARIABLES!!!
+	// To avoid passing them around to multiple functions.
+
+	static double Vcc, Vout;
+	static uint32_t Min = 1, Max = std::numeric_limits<uint32_t>::max();
+}
+
+
+
 namespace R
 {
 	class E
@@ -220,6 +231,9 @@ namespace R
 
 		virtual value_type first() const = 0;
 		virtual value_type last() const = 0;
+
+		virtual double errL() const = 0;
+		virtual double errH() const = 0;
 
 		virtual struct Result { int8_t LC, HC; uint16_t L, H; } find(double R) const noexcept(false) = 0;
 	};
@@ -311,48 +325,69 @@ namespace R
 	{
 	public:
 		E3() : E24Group(8) {}
+
+		virtual double errL() const final override { return 0.80; }
+		virtual double errH() const final override { return 1.20; }
 	};
 
 	class E6 : public E24Group
 	{
 	public:
 		E6() : E24Group(4) {}
+
+		virtual double errL() const final override { return 0.80; }
+		virtual double errH() const final override { return 1.20; }
 	};
 
 	class E12 : public E24Group
 	{
 	public:
 		E12() : E24Group(2) {}
+
+		virtual double errL() const final override { return 0.90; }
+		virtual double errH() const final override { return 1.10; }
 	};
 
 	class E24 : public E24Group
 	{
 	public:
 		E24() : E24Group(1) {}
+
+		virtual double errL() const final override { return 0.95; }
+		virtual double errH() const final override { return 1.05; }
 	};
 
 	class E48 : public E192Group
 	{
 	public:
 		E48() : E192Group(4) {}
+
+		virtual double errL() const final override { return 0.98; }
+		virtual double errH() const final override { return 1.02; }
 	};
 
 	class E96 : public E192Group
 	{
 	public:
 		E96() : E192Group(2) {}
+
+		virtual double errL() const final override { return 0.99; }
+		virtual double errH() const final override { return 1.01; }
 	};
 
 	class E192 : public E192Group
 	{
 	public:
 		E192() : E192Group(1) {}
+
+		virtual double errL() const final override { return 0.995; }
+		virtual double errH() const final override { return 1.005; }
 	};
 
 	
 
-	bool ExpToUnit(const uint16_t R1, const uint16_t R2, int8_t& R1C, int8_t& R2C, const uint32_t min, const uint32_t max,
-		char& R1U, char& R2U, std::streamsize& R1Precision, std::streamsize& R2Precision, const E& e)
+	bool ExpToUnit(const uint16_t R1, const uint16_t R2, int8_t& R1C, int8_t& R2C, char& R1U, char& R2U,
+		std::streamsize& R1Precision, std::streamsize& R2Precision, const E& e)
 	{
 		// make R1C , R2C >= 0 (by default the smaller resistance is >= 1)
 		const int8_t add = std::max(0 - R1C, 0 - R2C);
@@ -364,7 +399,7 @@ namespace R
 
 		// Min/Max
 		double biggerThanMin;
-		while ((biggerThanMin = R1 * std::pow(10, R1C) + R2 * std::pow(10, R2C)) < min)
+		while ((biggerThanMin = R1 * std::pow(10, R1C) + R2 * std::pow(10, R2C)) < Inputs::Min)
 		{
 			R1C++;
 			R2C++;
@@ -372,7 +407,7 @@ namespace R
 
 		const auto diff = std::abs(R1C - R2C) % 3;
 		double smallerThanMax;
-		while ((smallerThanMax = R1 * std::pow(10, R1C) + R2 * std::pow(10, R2C)) > max && R1C > -2 + diff && R2C > -2 + diff)
+		while ((smallerThanMax = R1 * std::pow(10, R1C) + R2 * std::pow(10, R2C)) > Inputs::Max && R1C > -2 + diff && R2C > -2 + diff)
 		{
 			R1C--;
 			R2C--;
@@ -418,25 +453,82 @@ namespace R
 			Console::Color(FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE);
 	}
 
-	void Print(uint16_t R1, uint16_t R2, int8_t R1C, int8_t R2C, const uint32_t min, const uint32_t max, const double ratio, const E& e, const bool vcc_vout)
+	void ShowcaseErrorColors()
+	{
+		std::cout << "\nError Colors: ";
+
+		SetErrorColor(10.1);
+		std::cout << "> 10%    ";
+
+		SetErrorColor(5.1);
+		std::cout << "> 5%    ";
+
+		SetErrorColor(2.1);
+		std::cout << "> 2%    ";
+
+		SetErrorColor(1.5);
+		std::cout << "1-2%    ";
+
+		SetErrorColor(0.9);
+		std::cout << "< 1%    ";
+
+		SetErrorColor(0.009);
+		std::cout << "< 0.01%" << std::endl;
+	}
+
+	void Print(uint16_t R1, uint16_t R2, int8_t R1C, int8_t R2C, const double ratio, const E& e, const bool vcc_vout)
 	{
 		char R1U, R2U;
 		std::streamsize R1Precision, R2Precision;
 
-		double foundRatio = vcc_vout ? (R1 * std::pow(10, R1C) + R2 * std::pow(10, R2C)) / (R2 * std::pow(10, R2C)) :
-			(R2 * std::pow(10, R2C)) / (R1 * std::pow(10, R1C) + R2 * std::pow(10, R2C));
+		const double _R1 = R1 * std::pow(10, R1C), _R2 = R2 * std::pow(10, R2C);
 
-		if (ExpToUnit(R1, R2, R1C, R2C, min, max, R1U, R2U, R1Precision, R2Precision, e))
+		if (ExpToUnit(R1, R2, R1C, R2C, R1U, R2U, R1Precision, R2Precision, e))
 		{
-			double error = 100 * (-1 + foundRatio / ratio);
+			double	foundRatio	= vcc_vout ? (_R1 + _R2) / _R2 : _R2 / (_R1 + _R2),
+					error		= foundRatio / ratio - 1,
+					voltageDiff	= (vcc_vout ? Inputs::Vcc : Inputs::Vout) * error;
+
+			error *= 100;
 
 			SetErrorColor(error);
 
 			//assuming error doesn't need more than 4 significant digits (~1x.xx%) and setting field width to 6 (including the point '.' and sign '+/-')
+
+			//Nominal
 			std::cout << std::noshowpos << std::fixed <<
 				"R1: " << std::setprecision(R1Precision) << R1 * std::pow(10, R1C) << R1U <<
 				"\tR2: " << std::setprecision(R2Precision) << R2 * std::pow(10, R2C) << R2U <<
-				(vcc_vout ? " \tVcc" : " \tVout") << " Error: " << std::showpos << std::setprecision(2) << std::setw(6) << error << "%" << std::endl;
+				(vcc_vout ? " \tVcc" : " \tVout") << " Error:" <<
+				"\tNom: " << std::showpos << std::setprecision(2) << std::setw(6) << error << "% (" <<
+				voltageDiff << " V)";
+
+			//Low
+			const double _R1L = _R1 * e.errH();
+			const double _R2L = _R2 * e.errL();
+
+			foundRatio = vcc_vout ? (_R1L + _R2L) / _R2L : _R2L / (_R1L + _R2L);
+			error = foundRatio / ratio - 1;
+			voltageDiff = (vcc_vout ? Inputs::Vcc : Inputs::Vout) * error;
+			error *= 100;
+
+			std::cout << "\t\tMin: " << std::setw(6) << error << "% (" << voltageDiff << " V)";
+
+
+			//High
+			const double _R1H = _R1 * e.errL();
+			const double _R2H = _R2 * e.errH();
+
+			foundRatio = vcc_vout ? (_R1H + _R2H) / _R2H : _R2H / (_R1H + _R2H);
+			error = foundRatio / ratio - 1;
+			voltageDiff = (vcc_vout ? Inputs::Vcc : Inputs::Vout) * error;
+			error *= 100;
+
+			std::cout << "\t\tMax: " << std::setw(6) << error << "% (" << voltageDiff << " V)";
+
+
+
+			std::cout << std::endl;
 		}
 	}
 }
@@ -484,10 +576,8 @@ int main()
 	
 
 	//Vcc and Vout
-	double vcc, vout;
-	GetNumber<double>("Enter Vcc (positive): ", vcc, DBL_EPSILON);
-
-	GetNumber<double>("Enter Vout (smaller than Vcc): ", vout, DBL_EPSILON, vcc);
+	GetNumber<double>("Enter Vcc (positive): ", Inputs::Vcc, std::numeric_limits<double>::epsilon());
+	GetNumber<double>("Enter Vout (smaller than Vcc): ", Inputs::Vout, std::numeric_limits<double>::epsilon(), Inputs::Vcc);
 	
 
 
@@ -522,7 +612,7 @@ int main()
 	bool higher = false, lower = false;
 
 	std::cout << "Do you want the other voltage (" << (vcc_vout ? "Vcc" : "Vout") <<
-		") to be calculated to be lower(L) or higher(H) than the entered number(" << (vcc_vout ? vcc : vout) << ")? (Optional) ";
+		") to be calculated to be lower(L) or higher(H) than the entered number(" << (vcc_vout ? Inputs::Vcc : Inputs::Vout) << ")? (Optional) ";
 	GetInput(nullptr, [&higher, &lower](std::string& input) -> bool
 		{
 			if (input.length() == 1)
@@ -545,33 +635,26 @@ int main()
 
 
 
-	//Minimum
-	uint32_t minimum = 1, maximum = UINT32_MAX;
-	GetNumber<uint32_t>("Enter minimum total resistance (1(default)-1,000,000,000) - Optional: ", minimum, 1, 1'000'000'000, true);
-	GetNumber<uint32_t>("Enter maximum total resistance (min-1,000,000,000) - Optional: ", maximum, minimum, 1'000'000'000, true);
+	// Minimum/Maximum
+	GetNumber<uint32_t>("Enter minimum total resistance (1(default)-1,000,000,000) - Optional: ", Inputs::Min, 1, 1'000'000'000, true);
+	GetNumber<uint32_t>("Enter maximum total resistance (min-1,000,000,000) - Optional: ", Inputs::Max, Inputs::Min, 1'000'000'000, true);
 
 
 
 	//Error Colors
-	std::cout << "Error Colors: ";
-	R::SetErrorColor(10.1);
-	std::cout << "> 10%    ";
+	R::ShowcaseErrorColors();
+
 	R::SetErrorColor(5.1);
-	std::cout << "> 5%    ";
-	R::SetErrorColor(2.1);
-	std::cout << "> 2%    ";
-	R::SetErrorColor(1.5);
-	std::cout << "1-2%    ";
-	R::SetErrorColor(0.9);
-	std::cout << "< 1%    ";
-	R::SetErrorColor(0.009);
-	std::cout << "< 0.01%\n" << std::endl;
+	std::cout << "\nNote:"
+		"\n* Min and max errors are calculated for when R1 and R2 have maximium opposite errors (e.g. +5% and -5%)! *"
+		"\n* Error color is set based on nominal error. *"
+		"\n* Min/Max error might have opposite sign of nominal error even if you previously chose only negative/positive error;"
+		" in other words, the selection is made based on nominal error and min/max error is not considered! *\n" << std::endl;
 
 
 
 	//Calculate
-
-	double ratio = vcc_vout ? vcc / vout : vout / vcc;
+	double ratio = vcc_vout ? Inputs::Vcc / Inputs::Vout : Inputs::Vout / Inputs::Vcc;
 
 	if (vcc_vout)
 	{
@@ -583,10 +666,10 @@ int main()
 			auto R1_approx = toleranceSelection->find(R1_true);
 
 			if (lower)
-				R::Print(R1_approx.L, R2, R1_approx.LC, 0, minimum, maximum, ratio, *toleranceSelection, vcc_vout);
+				R::Print(R1_approx.L, R2, R1_approx.LC, 0, ratio, *toleranceSelection, vcc_vout);
 
 			if (higher)
-				R::Print(R1_approx.H, R2, R1_approx.HC, 0, minimum, maximum, ratio, *toleranceSelection, vcc_vout);
+				R::Print(R1_approx.H, R2, R1_approx.HC, 0, ratio, *toleranceSelection, vcc_vout);
 		}
 	}
 	else
@@ -599,10 +682,10 @@ int main()
 			auto R2_approx = toleranceSelection->find(R2_true);
 
 			if (lower)
-				R::Print(R1, R2_approx.L, 0, R2_approx.LC, minimum, maximum, ratio, *toleranceSelection, vcc_vout);
+				R::Print(R1, R2_approx.L, 0, R2_approx.LC, ratio, *toleranceSelection, vcc_vout);
 
 			if (higher)
-				R::Print(R1, R2_approx.H, 0, R2_approx.HC, minimum, maximum, ratio, *toleranceSelection, vcc_vout);
+				R::Print(R1, R2_approx.H, 0, R2_approx.HC, ratio, *toleranceSelection, vcc_vout);
 		}
 	}
 
