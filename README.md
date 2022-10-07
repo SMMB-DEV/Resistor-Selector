@@ -12,4 +12,4 @@ A simple, single source file program to calculate two standard resistor values f
  - Option to specify min/max total resistance (R<sub>1</sub> + R<sub>2</sub>)
  
 ## Usage
-![](assets/example.png)
+![](assets/Example.png)
