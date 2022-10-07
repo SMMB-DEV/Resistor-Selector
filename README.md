@@ -11,5 +11,5 @@ A simple, single source file program to calculate two standard resistor values f
  - Option to only find values that result in positive/negative voltage error
  - Option to specify min/max total resistance (R<sub>1</sub> + R<sub>2</sub>)
  
-##Usage
+## Usage
 ![](assets/Example.png)
