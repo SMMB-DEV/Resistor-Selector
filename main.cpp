@@ -139,9 +139,6 @@ void GetNumber(const char* const msg, T& t, const T min = std::numeric_limits<T>
 
 namespace Inputs
 {
-	// YES, I'M USING GLOBAL VARIABLES!!!
-	// To avoid passing them around to multiple functions.
-
 	static double Vcc, Vout;
 	static uint32_t Min = 1, Max = std::numeric_limits<uint32_t>::max();
 }
