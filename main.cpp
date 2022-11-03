@@ -78,7 +78,7 @@ namespace Console
 
 
 
-void GetInput(const char* msg, const std::function< bool(std::string&) >&& input_ok)
+void GetInput(const char* msg, const std::function< bool(const std::string&) >&& isInputValid)
 {
 	if (msg)	//necessary?
 		std::cout << msg;
@@ -95,7 +95,7 @@ void GetInput(const char* msg, const std::function< bool(std::string&) >&& input
 			continue;
 		}
 
-		if (!input_ok || input_ok(input))
+		if (!isInputValid || isInputValid(input))
 			break;
 
 		Console::RestoreCursorPosition(input.length());
@@ -128,7 +128,7 @@ void GetNumber(const char* const msg, T& t, const T min = std::numeric_limits<T>
 		std::istringstream ss(input);	//copies the string!!
 
 		ss >> t;
-		if (ss.rdstate() == std::istringstream::eofbit && t >= min && t <= max) // && (isValid ? isValid(t) : true))
+		if (ss.rdstate() == std::istringstream::eofbit && t >= min && t <= max)
 			break;
 
 		Console::RestoreCursorPosition(input.length());
@@ -157,7 +157,7 @@ namespace R
 		{
 		public:
 			using iterator_category = std::random_access_iterator_tag;
-			using difference_type = int16_t;
+			using difference_type = const int16_t;
 			using value_type = E::value_type;
 			using pointer = value_type*;
 			using reference = value_type&;
@@ -199,7 +199,7 @@ namespace R
 		int8_t MakeInRange(double& R) const noexcept(false)
 		{
 			if (R <= 0)
-				throw std::out_of_range("");
+				throw std::out_of_range("R must be positive!");
 
 
 			//make 100 <= R < 1000
@@ -237,12 +237,12 @@ namespace R
 
 	class E24Group : public E
 	{
-		static constexpr uint16_t E24V[24] =	//Every 2nd number for E12, every 4th number for E6 and every 8th number for E3
+		static constexpr value_type E24V[24] =	//Every 2nd number for E12, every 4th number for E6 and every 8th number for E3
 		{
 			100, 110, 120, 130, 150, 160, 180, 200, 220, 240, 270, 300, 330, 360, 390, 430, 470, 510, 560, 620, 680, 750, 820, 910
 		};
 
-		const E::iterator::difference_type step;
+		E::iterator::difference_type step;
 
 	protected:
 		E24Group(E::iterator::difference_type step) : step(step) {}
@@ -260,7 +260,7 @@ namespace R
 		{
 			int8_t correction = MakeInRange(R);	//100 - 1000
 
-			for (uint8_t i = 0; i < _countof(E24V); i += step)
+			for (uint8_t i = 0; i < 24; i += step)
 			{
 				if (E24V[i] > R)	//for the first time
 					return Result{ correction, correction, E24V[i - step], E24V[i] };	//i will never be 0
@@ -275,7 +275,7 @@ namespace R
 
 	class E192Group : public E
 	{
-		static constexpr uint16_t E192V[192] =	//Every second number for E96 and every 4th number for E48
+		static constexpr value_type E192V[192] =	//Every second number for E96 and every 4th number for E48
 		{
 			100, 101, 102, 104, 105, 106, 107, 109, 110, 111, 113, 114, 115, 117, 118, 120, 121, 123, 124, 126, 127, 129, 130, 132,
 			133, 135, 137, 138, 140, 142, 143, 145, 147, 149, 150, 152, 154, 156, 158, 160, 162, 164, 165, 167, 169, 172, 174, 176,
@@ -305,7 +305,7 @@ namespace R
 		{
 			int8_t correction = MakeInRange(R);	//100 - 1000
 
-			for (uint8_t i = 0; i < _countof(E192V); i += step)
+			for (uint8_t i = 0; i < 192; i += step)
 			{
 				if (E192V[i] > R)	//for the first time
 					return Result{ correction, correction, E192V[i - step], E192V[i] };	//i will never be 0
@@ -416,7 +416,7 @@ namespace R
 
 
 		//Units
-		static constexpr char units[] = { ' ', 'K', 'M', 'G' };
+		static constexpr char units[] = { ' ', 'k', 'M', 'G' };
 		const std::streamsize significantDigits = e.SignificantDigits();
 
 		uint8_t unitIndex = R1C / 3 + (R1C > 0);
@@ -473,7 +473,7 @@ namespace R
 		std::cout << "< 0.01%" << std::endl;
 	}
 
-	void Print(uint16_t R1, uint16_t R2, int8_t R1C, int8_t R2C, const double ratio, const E& e, const bool vcc_vout)
+	void Print(uint16_t R1, uint16_t R2, int8_t R1C, int8_t R2C, const double voltageRatio, const E& e, const bool vcc_vout)
 	{
 		char R1U, R2U;
 		std::streamsize R1Precision, R2Precision;
@@ -483,7 +483,7 @@ namespace R
 		if (ExpToUnit(R1, R2, R1C, R2C, R1U, R2U, R1Precision, R2Precision, e))
 		{
 			double	foundRatio	= vcc_vout ? (_R1 + _R2) / _R2 : _R2 / (_R1 + _R2),
-					error		= foundRatio / ratio - 1,
+					error		= foundRatio / voltageRatio - 1,
 					voltageDiff	= (vcc_vout ? Inputs::Vcc : Inputs::Vout) * error;
 
 			error *= 100;
@@ -505,7 +505,7 @@ namespace R
 			const double _R2L = _R2 * e.errL();
 
 			foundRatio = vcc_vout ? (_R1L + _R2L) / _R2L : _R2L / (_R1L + _R2L);
-			error = foundRatio / ratio - 1;
+			error = foundRatio / voltageRatio - 1;
 			voltageDiff = (vcc_vout ? Inputs::Vcc : Inputs::Vout) * error;
 			error *= 100;
 
@@ -517,7 +517,7 @@ namespace R
 			const double _R2H = _R2 * e.errH();
 
 			foundRatio = vcc_vout ? (_R1H + _R2H) / _R2H : _R2H / (_R1H + _R2H);
-			error = foundRatio / ratio - 1;
+			error = foundRatio / voltageRatio - 1;
 			voltageDiff = (vcc_vout ? Inputs::Vcc : Inputs::Vout) * error;
 			error *= 100;
 
@@ -545,7 +545,7 @@ int main()
 	//Select resistors' tolerance
 	R::E* toleranceSelection = nullptr;
 	GetInput("Enter desired series:\n1) E3 (> 20%)\n2) E6(20%)\n3) E12(10%)\n4) E24(5% & 1%)\n5) E48(2%)\n6) E96(1%)\n7) E192(<= 0.5%)\n",
-		[&toleranceSelection](std::string& input) -> bool
+		[&toleranceSelection](const std::string& input) -> bool
 		{
 			if (input.length() == 1)
 			{
@@ -582,7 +582,7 @@ int main()
 
 	// Vcc/Vout
 	bool vcc_vout;	//0: Vcc, 1: Vout
-	GetInput("\nWhich one should be kept constant: Vcc(C) or Vout(O)? ", [&vcc_vout](std::string& input) -> bool
+	GetInput("\nWhich one should be kept constant: Vcc(C) or Vout(O)? ", [&vcc_vout](const std::string& input) -> bool
 		{
 			if (input.length() == 1)
 			{
@@ -612,7 +612,7 @@ int main()
 
 	std::cout << "Do you want the other voltage (" << (vcc_vout ? "Vcc" : "Vout") <<
 		") to be calculated to be lower(L) or higher(H) than the entered number(" << (vcc_vout ? Inputs::Vcc : Inputs::Vout) << ")? (Optional) ";
-	GetInput(nullptr, [&higher, &lower](std::string& input) -> bool
+	GetInput(nullptr, [&higher, &lower](const std::string& input) -> bool
 		{
 			if (input.length() == 1)
 			{
