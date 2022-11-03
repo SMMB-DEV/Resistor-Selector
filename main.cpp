@@ -30,13 +30,13 @@
 #include <functional>
 #include <iomanip>
 
-#define NOMINMAX
-#include <Windows.h>
-
 
 
 namespace Console
 {
+	#define NOMINMAX
+	#include <Windows.h>
+
 	static COORD CURRENT_COORD;
 	static HANDLE CONSOLE_HANDLE = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -537,6 +537,8 @@ namespace R
 int main()
 {
 	Console::Init();
+	Console::SetConsoleTitle("Resistor Selector v" VERSION_CODE);
+	std::cout << "Resistor Selector v" VERSION_CODE << "\n\n";
 
 
 
